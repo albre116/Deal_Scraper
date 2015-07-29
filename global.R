@@ -252,44 +252,51 @@ FBAcosts <- function(ASIN, FBAFeeTable, ShipFeeTable, UPSrate, amzpriceparsed, a
   
   #Calculate package category dims
   dims <- sort(c(amzdetailsparsed$length, amzdetailsparsed$width, amzdetailsparsed$height), decreasing = TRUE)
+  
+  #Set 'estimate' variable as FALSE
+  alldims <- TRUE
+  
+  #replace NA dims with "0" to at least get an estimate for shipping
+  dims[which(is.na(dims[1:3]))] <- 0
+  
   dimweight <- prod(dims)/166
   lengthgirth <- dims[1] +2*sum(dims[2:3])
   
-  #check to make sure all dims provided by amazon to provide specific shipping calculations, if not, return NA
-  if(sum(is.na(c(amzdetailsparsed$length, amzdetailsparsed$width, amzdetailsparsed$height, amzdetailsparsed$weight))) == 0){
+  #check to make sure all dims provided by amazon to provide specific shipping calculations, if not, store 'estimate' field as TRUE
+  if(sum(is.na(c(amzdetailsparsed$length, amzdetailsparsed$width, amzdetailsparsed$height, amzdetailsparsed$weight))) > 0){
+    alldims <- FALSE
     
-    #Determine proper shipping fee category
-    lengthcat <- which(ShipFeeTable$MaxLength > dims[1])
-    widthcat <- which(ShipFeeTable$MaxWidth > dims[2])
-    heightcat <- which(ShipFeeTable$MaxHeight > dims[3])
-    weightcat <- which(ShipFeeTable$MaxWeight > amzdetailsparsed$weight)
-    dimweightcat <- which(ShipFeeTable$MaxDimWeight > dimweight)
-    lengthgirthcat <- which(ShipFeeTable$MaxLengthGirth > lengthgirth)
-    
-    #replace any NA values with 0 to prevent errors
-    if(is.na(lengthcat) == TRUE){lengthcat <- 0}
-    if(is.na(widthcat) == TRUE){lengthcat <- 0}
-    if(is.na(heightcat) == TRUE){lengthcat <- 0}
-    if(is.na(weightcat) == TRUE){lengthcat <- 0}
-    if(is.na(dimweightcat) == TRUE){lengthcat <- 0}
-    if(is.na(lengthgirthcat) == TRUE){lengthcat <- 0}
-    
-    sizeind <- min(Reduce(intersect, list(lengthcat, widthcat, heightcat, weightcat, dimweightcat, lengthgirthcat)))
-    
-    shipweight <- max(amzdetailsparsed$weight, dimweight, na.rm = TRUE)
-    shipweighttiers <- rbind(c(ShipFeeTable$WeightMax1[sizeind], ShipFeeTable$WeightMax2[sizeind], ShipFeeTable$WeightMax3[sizeind]),
-                             c(ShipFeeTable$FeePerLb1[sizeind], ShipFeeTable$FeePerLb2[sizeind], ShipFeeTable$FeePerLb3[sizeind]))
-    #Calculate shipping fee (fulfillment and outbound to amazon assuming ~ UPSrate per lb and $0.30 per item for stickering)
-    shipfees <- ShipFeeTable$FixedFee[sizeind] + shipweight*UPSrate + 0.30 +
-      min(shipweighttiers[1,1], shipweight)*shipweighttiers[2,1] +
-      min(shipweighttiers[1,2]-shipweighttiers[1,1], max(shipweight- shipweighttiers[1,1], 0))*shipweighttiers[2,2] + 
-      min(shipweighttiers[1,3]-shipweighttiers[1,2], max(shipweight- shipweighttiers[1,2], 0))*shipweighttiers[2,3]
-    
-    #Remove FBA shipping and handling fees if sale price is over zero fulfillment fee limit for categoey
-    if(amzpriceparsed$price > ShipFeeTable$ZeroFeeAt[sizeind]){shipfees <- shipweight*UPSrate + 0.30}
     
   }
-  else{shipfees <- NA}
+  
+  #Store amazon weight. Replace with 0 if NA to get shipping estimate at a minimum
+  
+  amzweight <- amzdetailsparsed$weight
+  if(is.na(amzweight) == TRUE){
+    amzweight <- 0
+  }
+  
+  #Determine proper shipping fee category
+  lengthcat <- which(ShipFeeTable$MaxLength > dims[1])
+  widthcat <- which(ShipFeeTable$MaxWidth > dims[2])
+  heightcat <- which(ShipFeeTable$MaxHeight > dims[3])
+  weightcat <- which(ShipFeeTable$MaxWeight > amzweight)
+  dimweightcat <- which(ShipFeeTable$MaxDimWeight > dimweight)
+  lengthgirthcat <- which(ShipFeeTable$MaxLengthGirth > lengthgirth)
+  
+  sizeind <- min(Reduce(intersect, list(lengthcat, widthcat, heightcat, weightcat, dimweightcat, lengthgirthcat)))
+  
+  shipweight <- max(amzweight, dimweight, na.rm = TRUE)
+  shipweighttiers <- rbind(c(ShipFeeTable$WeightMax1[sizeind], ShipFeeTable$WeightMax2[sizeind], ShipFeeTable$WeightMax3[sizeind]),
+                           c(ShipFeeTable$FeePerLb1[sizeind], ShipFeeTable$FeePerLb2[sizeind], ShipFeeTable$FeePerLb3[sizeind]))
+  #Calculate shipping fee (fulfillment and outbound to amazon assuming ~ UPSrate per lb and $0.30 per item for stickering)
+  shipfees <- ShipFeeTable$FixedFee[sizeind] + shipweight*UPSrate + 0.30 +
+    min(shipweighttiers[1,1], shipweight)*shipweighttiers[2,1] +
+    min(shipweighttiers[1,2]-shipweighttiers[1,1], max(shipweight- shipweighttiers[1,1], 0))*shipweighttiers[2,2] + 
+    min(shipweighttiers[1,3]-shipweighttiers[1,2], max(shipweight- shipweighttiers[1,2], 0))*shipweighttiers[2,3]
+  
+  #Remove FBA shipping and handling fees if sale price is over zero fulfillment fee limit for categoey
+  if(amzpriceparsed$price > ShipFeeTable$ZeroFeeAt[sizeind]){shipfees <- shipweight*UPSrate + 0.30}
   
   #Calculate amazon commission fee for sale based on product category
   comind <- grep(paste(amzpriceparsed$rankcat), as.character(FBAFeeTable$FBACatName), ignore.case = TRUE)
@@ -302,7 +309,7 @@ FBAcosts <- function(ASIN, FBAFeeTable, ShipFeeTable, UPSrate, amzpriceparsed, a
     min(salefeetiers[1,3] - salefeetiers[1,2], max(amzpriceparsed$price- salefeetiers[1,2], 0))*salefeetiers[2,2] + 
     max(amzpriceparsed$price - salefeetiers[1,3], 0)*salefeetiers[2,3]
   
-  fees <- list("Commission" = salefees, "Shipping" = shipfees)
+  fees <- list("Commission" = salefees, "Shipping" = shipfees, "AllDimensionsAvailable" = alldims)
   
   return(fees)
   
