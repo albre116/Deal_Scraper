@@ -51,7 +51,7 @@ shinyServer(function(input, output, session) {
       
       if(length(slickemails != 0 )){
       
-          for(i in 1:min(length(slickemails), 4)){        
+          for(i in 1:min(length(slickemails), 1)){        
           newdeals <- data.frame()
       
       try(newdeals <- newslick(message.id = slickemails[i], FBAFeeTable = datatables$FBAFeeTable, ShipFeeTable = datatables$ShipFeeTable, UPSrate = as.numeric(input$UPSrate),
@@ -72,8 +72,8 @@ shinyServer(function(input, output, session) {
         #If deals matching this criteria are found, send an alert email with the deal information to the email addresses specified by the shiny UI inputs.
         if(length(alert) > 0){
         
-        alerttext <- paste(colnames(alertframe), ": ", apply(alertframe[alert,], MARGIN = 1, FUN = "["), "\n")
-            
+          alerttext <- paste0(colnames(alertframe), ": ", apply(alertframe[alert,], MARGIN = 1, FUN = "["), " \n ", collapse = " ")
+          
         alertmessage <- mime(From= "psbox1123@gmail.com", To = input$alertemail, subject = "Deals Found",
                              body = alerttext)
         
@@ -94,22 +94,23 @@ shinyServer(function(input, output, session) {
       
       }
       
-      isolate(filetime <- gsub(":", "-", Sys.time(), fixed = TRUE))
-      
-      if(is.null(newdealsdataframe$slicklink) == FALSE){
-      
-      write.csv(newdealsdataframe, file = paste0("dealmatrix", filetime, ".csv"))
-      
-      }
-      
-      if(is.null(notanalyzeddataframe$slicklink) == FALSE){
-      
-      write.csv(notanalyzeddataframe, file = paste0("nodealmatrix", filetime, ".csv"))
-      
-      }
+      #Code to write deals frame for each cycle of this reactive statement.
+#       isolate(filetime <- gsub(":", "-", Sys.time(), fixed = TRUE))
+#       
+#       if(is.null(newdealsdataframe$slicklink) == FALSE){
+#       
+#       write.csv(newdealsdataframe, file = paste0("dealmatrix", filetime, ".csv"))
+#       
+#       }
+#       
+#       if(is.null(notanalyzeddataframe$slicklink) == FALSE){
+#       
+#       write.csv(notanalyzeddataframe, file = paste0("nodealmatrix", filetime, ".csv"))
+#       
+#       }
     
       #Rerun this reactive section after xxx milliseconds
-      invalidateLater(600000, session)
+      invalidateLater(60000, session)
     
     }
     
