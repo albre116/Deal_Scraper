@@ -27,10 +27,10 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
   slicknotanalyzed <- list()
       
       #Get details of first message in list and delete message
-      slickmessage <- messageget(message.id = message.id, deleteread = TRUE)
+      #slickmessage <- messageget(message.id = message.id, deleteread = TRUE)
   
 #   #debug#
-#   slickmessage <- messageget(message.id = message.id, deleteread = FALSE)
+   slickmessage <- messageget(message.id = message.id, deleteread = FALSE)
 #   #debug#
   
       #Get deal alert links from slickdeals
@@ -85,6 +85,9 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                   #Send deal title to amazon listmatching product
                   amzsearchreturn <- amazon.MWSPost(AWSAccessKeyId = AWSAccessKeyId, Action = "ListMatchingProducts", MarketplaceId = MarketplaceId, SellerId = SellerId, AWSSecretKey = AWSSecretKey, Query = paste(amzsearchstringloop, collapse = " "))
                   
+                  #Exit function if amazon MWS post timed out
+                  if(is.null(amzsearchreturn) == TRUE){stop("Timeout")}
+                    
                   #Parse list matching product response
                   amzreturn <- amazon.searchparse(amzsearchreturn)
                   
@@ -160,10 +163,19 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                   
                   #Get price and rank details for identified ASIN match
                   amzpricereturn <- amazon.MWSPost(ASIN = likelyASIN$ASIN, AWSAccessKeyId = AWSAccessKeyId, Action = "GetCompetitivePricingForASIN", MarketplaceId = MarketplaceId, SellerId = SellerId, AWSSecretKey = AWSSecretKey)
+                  
+                  #Exit function if amazon MWS post timed out
+                  if(is.null(amzpricereturn) == TRUE){stop("Timeout")}
+                  
                   amzpriceparsed <- amazon.pricerankparse(amzpricereturn)
+                  
                   
                   #Get product details for identified ASIN match
                   amzdetailsreturn <- amazon.MWSPost(ASIN = likelyASIN$ASIN, AWSAccessKeyId = AWSAccessKeyId, Action = "GetMatchingProduct", MarketplaceId = MarketplaceId, SellerId = SellerId, AWSSecretKey = AWSSecretKey)
+                  
+                  #Exit function if amazon MWS post timed out
+                  if(is.null(amzdetailsreturn) == TRUE){stop("Timeout")}
+                  
                   amzdetailsparsed <- amazon.productdetailsparse(amzdetailsreturn)
                   
                   #Get FBA shipping and commission fees
@@ -231,6 +243,8 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
   ##Perhaps use dictionary to check for text strings that aren't words as a starting point to identify brand and model?
   ##qdap package has dictionary and spell checker that can be used for this potentially: here is process:
   
+  delete_message(id = message.id)    
+      
   slickout <- list("slickanalyzed" = slickanalyzed, "slicknotanalyzed" = slicknotanalyzed)
   
   return(slickout)
@@ -936,7 +950,8 @@ amazon.MWSPost <- function(AWSAccessKeyId, Action, MarketplaceId, SellerId, AWSS
   #                        sep = '')
   
   #Sent request to Amazon and decode result into XML tree with pointers. Alternatively, can use as(AmazonResult, "character") to convert to characters for different XML parser
-  AmazonResult <- content(POST(AmazonURL))
+  #AmazonResult <- content(POST(AmazonURL))
+  tryCatch(AmazonResult <- content(POST(AmazonURL, timeout(60))), error = function(e){AmazonResult <- NULL})
   return(AmazonResult)
 }
 
