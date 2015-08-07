@@ -27,10 +27,10 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
   slicknotanalyzed <- list()
       
       #Get details of first message in list and delete message
-      #slickmessage <- messageget(message.id = message.id, deleteread = TRUE)
+      slickmessage <- messageget(message.id = message.id, deleteread = TRUE)
   
 #   #debug#
-   slickmessage <- messageget(message.id = message.id, deleteread = FALSE)
+#   slickmessage <- messageget(message.id = message.id, deleteread = FALSE)
 #   #debug#
   
       #Get deal alert links from slickdeals
@@ -41,6 +41,10 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
           
           ##UPGRADE to get details for each link in email that has price and ignore others and create loop or better yet FUNCTION
           slickdetails <- slickget(slickURL = slicklink[j])
+          
+          #debug
+          print("Done Getting Slickdeals Site")
+          #debug
           
           if(length(slickdetails$deallinks) > 0){
             for(k in 1:length(slickdetails$deallinks)){
@@ -77,6 +81,10 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                 
                 amzsearchparsed <- c()
                 
+                #debug
+                print("Start Amazon Product Search")
+                #debug
+                
                 #loop amazon search constantly shortening search string from the right until the maximum number of search results (10) is returned
                 for (l in 1:length(amzsearchstring)){
                   
@@ -102,6 +110,10 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                   
                 }
                 
+                #debug
+                print("Done with Amazon Product Search")
+                #debug
+                
                 #Remove duplicate values from product search results
                 amzsearchparsed <- subset(amzsearchparsed, !duplicated(amzsearchparsed$ASIN))
                 
@@ -111,6 +123,10 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                 
                 #Get raw response from store webpage
                 rawscrape <- capture.output(htmlParse(GET(slickdetails$deallinks[[k]])))
+                
+                #debug
+                print("Done Getting Store Website")
+                #debug
                 
                 #Calculate best ASIN match and return as likelyASIN
                 
@@ -164,6 +180,10 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                   #Get price and rank details for identified ASIN match
                   amzpricereturn <- amazon.MWSPost(ASIN = likelyASIN$ASIN, AWSAccessKeyId = AWSAccessKeyId, Action = "GetCompetitivePricingForASIN", MarketplaceId = MarketplaceId, SellerId = SellerId, AWSSecretKey = AWSSecretKey)
                   
+                  #debug
+                  print("Done with Amazon Price Get")
+                  #debug
+                  
                   #Exit function if amazon MWS post timed out
                   if(is.null(amzpricereturn) == TRUE){stop("Timeout")}
                   
@@ -172,6 +192,10 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                   
                   #Get product details for identified ASIN match
                   amzdetailsreturn <- amazon.MWSPost(ASIN = likelyASIN$ASIN, AWSAccessKeyId = AWSAccessKeyId, Action = "GetMatchingProduct", MarketplaceId = MarketplaceId, SellerId = SellerId, AWSSecretKey = AWSSecretKey)
+                  
+                  #debug
+                  print("Done with Amazon Details Get")
+                  #debug
                   
                   #Exit function if amazon MWS post timed out
                   if(is.null(amzdetailsreturn) == TRUE){stop("Timeout")}
@@ -243,7 +267,8 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
   ##Perhaps use dictionary to check for text strings that aren't words as a starting point to identify brand and model?
   ##qdap package has dictionary and spell checker that can be used for this potentially: here is process:
   
-  delete_message(id = message.id)    
+      #debug, moves delete statement here if we want to diagnose why an email is causing problems
+  #delete_message(id = message.id)    
       
   slickout <- list("slickanalyzed" = slickanalyzed, "slicknotanalyzed" = slicknotanalyzed)
   
@@ -951,7 +976,7 @@ amazon.MWSPost <- function(AWSAccessKeyId, Action, MarketplaceId, SellerId, AWSS
   
   #Sent request to Amazon and decode result into XML tree with pointers. Alternatively, can use as(AmazonResult, "character") to convert to characters for different XML parser
   #AmazonResult <- content(POST(AmazonURL))
-  tryCatch(AmazonResult <- content(POST(AmazonURL, timeout(60))), error = function(e){AmazonResult <- NULL})
+  tryCatch(AmazonResult <- content(POST(AmazonURL, timeout(120))), error = function(e){AmazonResult <- NULL})
   return(AmazonResult)
 }
 

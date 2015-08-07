@@ -59,7 +59,7 @@ shinyServer(function(input, output, session) {
                                SellerId = input$SellerId, AWSSecretKey = input$AWSSecretKey))
       
       
-      browser()
+      
       #If margin is above a certain percent and modelmatch and weightedmatch are above a certain threshhold, send an email alert with deal content
       if(length(newdeals$slickanalyzed) > 0){
         
