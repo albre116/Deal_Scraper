@@ -13,6 +13,8 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
   #SellerId: Amazon Product MWS API credential
   #AWSSecretKey: Amazon Product MWS API credential
   
+  library(tm)
+  library(slam)
   library(httr)
   library(rvest)
   library(qdap)
@@ -49,10 +51,28 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
           if(length(slickdetails$deallinks) > 0){
             for(k in 1:length(slickdetails$deallinks)){
               
+              #Deal collection timestamp
               collectiontime <- as.character(as.POSIXct(Sys.time(), tz = Sys.timezone))
               
+              #Get raw response from store webpage using slickdeals link
+              tryCatch(rawscrape <- GET(slickdetails$deallinks[[k]], timeout(120)), error = function(e){rawscrape <- NULL})
+              
+              #If loop times out, write the slickdeals deal link to a txt error file
+              if(is.null(rawscrape) == TRUE){
+                
+                errorframe <- list()
+                errorframe$deallink <- slickdetails$deallinks[[k]]
+                errortime <- gsub(":", "-", Sys.time(), fixed = TRUE)
+                
+                write.csv(data.frame(errorframe), file = paste0("linktimeout", errortime, ".csv"))
+                }
+              
+              #debug
+              print("Done Getting Store Website")
+              #debug
+              
               #If no price found for link, dump details into slicknotanalyzed list
-              if(is.na(slickdetails$price[[k]]) == TRUE){
+              if((is.na(slickdetails$price[[k]]) == TRUE) | (is.null(rawscrape) == TRUE)){
                 
                 slicknotanalyzed$slicklink[length(slicknotanalyzed$slicklink) + 1] <- slicklink[j]
                 slicknotanalyzed$dealtitle[length(slicknotanalyzed$dealtitle) + 1] <- slickdetails$dealtitle
@@ -61,6 +81,9 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                 slicknotanalyzed$timeanalyzed[length(slicknotanalyzed$timeanalyzed) + 1] <- collectiontime
               }
               else{
+                
+                #Parse store website details
+                rawscrape <- capture.output(htmlParse(rawscrape))
                 
                 #search with specific deal text first.
                 #UPGRADE# Loop again with deal title if no matches are found
@@ -121,13 +144,6 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                 amzsearchparsed$Model[which(amzsearchparsed$Model == "NA")] <- ""
                 amzsearchparsed$PartNumber[which(amzsearchparsed$PartNumber == "NA")] <- ""
                 
-                #Get raw response from store webpage
-                rawscrape <- capture.output(htmlParse(GET(slickdetails$deallinks[[k]])))
-                
-                #debug
-                print("Done Getting Store Website")
-                #debug
-                
                 #Calculate best ASIN match and return as likelyASIN
                 
                 likelyASIN <- c()
@@ -170,6 +186,35 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                   likelyASIN <- partmodelmatch[which.max(partmodelmatch$WeightedMatch),]
                   
                   #TUNE THIS##If no exact matches found, remove requirement to match model number exactly and find the maximum weighted value match
+                  
+                  ##Experimental## TEST COSINE SIMILARITY WITH TF-IDF weighting##
+                  
+                  #Combine manufacturer, model, partnumber, and title from Amazon results into a single line per ASIN
+                  amzcorpus <- amzsearchparsed
+                  amzcorpus$ASIN <- ""
+                  amzcorpus <- apply(X = amzsearchparsed, MARGIN = 1, FUN = paste, collapse = " ")
+                  names(amzcorpus) <- amzsearchparsed$ASIN
+                  
+                  #Get only text from rawscrape
+                  storetext <- htmlTreeParse(rawscrape, useInternal = TRUE)
+                  storetext <- unlist(xpathApply(storetext,"//p", xmlValue))
+                  storetext <- paste(storetext, collapse = " ")
+                  
+                  #create corpus with storetext as first row
+                  amzcorpus <- Corpus(VectorSource(c(storetext, amzcorpus)))
+                  amzTDM <- TermDocumentMatrix(amzcorpus,
+                                               control = list(stopwords = TRUE, removePunctuation = TRUE,
+                                                              minWordLength = 2, weighting = weightTfIdf))
+                  colnames(amzTDM) <- c("Store", amzsearchparsed$ASIN)
+                  
+                  #Calculate cosine similarity
+                  ASIN_store_cosine <- crossprod_simple_triplet_matrix(amzTDM)/(sqrt(col_sums(amzTDM^2) %*% t(col_sums(amzTDM^2))))
+                  
+                  #Select ASIN with the highest cosine similarity
+                  cosASIN <- names(which.max(ASIN_store_cosine[2:nrow(ASIN_store_cosine),1]))
+                  cosTitle <- amzsearchparsed$Title[which(amzsearchparsed$ASIN == cosASIN)]
+                  
+                  ##End Experimental##
                   
                   if(length(likelyASIN$ASIN) == 0){
                     
@@ -239,6 +284,10 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                   slickanalyzed$ProdCost[length(slickanalyzed$ProdCost) + 1] <- slickdetails$price[[k]]
                   slickanalyzed$AmzCommission[length(slickanalyzed$AmzCommission) + 1] <- fees$Commission
                   slickanalyzed$ShipInCost[length(slickanalyzed$ShipInCost) + 1] <- fees$Shipping
+                  
+                  #Experimental cosine results#
+                  slickanalyzed$cosASIN[length(slickanalyzed$cosASIN) + 1] <- cosASIN
+                  slickanalyzed$cosTitle[length(slickanalyzed$cosTitle) + 1] <- cosTitle
                   
                   #Details of slickdeals source post
                   slickanalyzed$thumbs[length(slickanalyzed$thumbs) + 1] <- slickdetails$thumbs
