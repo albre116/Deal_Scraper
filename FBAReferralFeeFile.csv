@@ -2,15 +2,15 @@ ProductCat,FBACatName,FeePercent1,UpBound1,FeePercent2,UpBound2,FeePercent3,MinF
 3D Printed Products,,0.12,1000000,0,1000000,0,0
 Amazon Device Accessories,,0.45,1000000,0,1000000,0,$1.00 
 Amazon Kindle,,0.15,1000000,0,1000000,0,0
-Automotive & Powersports,,0.12,1000000,0,1000000,0,$1.00 
-Baby Products (excluding Baby Apparel),,0.15,1000000,0,1000000,0,$1.00 
-Beauty,,0.15,1000000,0,1000000,0,$1.00 
-Books,books,0.15,1000000,0,1000000,0,0
+Automotive & Powersports,automotive,0.12,1000000,0,1000000,0,$1.00 
+Baby Products (excluding Baby Apparel),baby_product,0.15,1000000,0,1000000,0,$1.00 
+Beauty,beauty,0.15,1000000,0,1000000,0,$1.00 
+Books,book,0.15,1000000,0,1000000,0,0
 Camera and Photo,,0.08,1000000,0,1000000,0,$1.00 
 Cell Phone Devices*,,0.08,1000000,0,1000000,0,0
 Clothing & Accessories,,0.15,1000000,0,1000000,0,$1.00 
 Collectible Coins,,0.15,250,0.1,1000,0.06,$1.00 
-Consumer Electronics,CE,0.08,1000000,0,1000000,0,$1.00 
+Consumer Electronics,ce,0.08,1000000,0,1000000,0,$1.00 
 Electronics Accessories,,0.15,100,0.08,1000000,0,$1.00 
 Entertainment Collectibles,,0.2,100,0.1,1000,0.06,0
 Health & Personal Care (including Personal Care Appliances),,0.15,1000000,0,1000000,0,$1.00 
@@ -20,10 +20,10 @@ Industrial & Scientific (including Food Service and Janitorial & Sanitation),,0.
 Jewelry,,0.2,1000000,0,1000000,0,$2.00 
 Kitchen,kitchen,0.15,1000000,0,1000000,0,$1.00 
 Luggage & Travel Accessories,,0.15,1000000,0,1000000,0,$1.00 
-Major Appliances,,0.15,300,0.08,1000000,0,$1.00 
-Music,,0.15,1000000,0,1000000,0,0
+Major Appliances,major_appliances,0.15,300,0.08,1000000,0,$1.00 
+Music,music,0.15,1000000,0,1000000,0,0
 Musical Instruments,musical_instruments,0.15,1000000,0,1000000,0,$1.00 
-Office Products,,0.15,1000000,0,1000000,0,$1.00 
+Office Products,office_product,0.15,1000000,0,1000000,0,$1.00 
 Outdoors,,0.15,1000000,0,1000000,0,$1.00 
 Personal Computers,pc,0.06,1000000,0,1000000,0,$1.00 
 "Shoes, Handbags and Sunglasses",,0.15,1000000,0,1000000,0,$1.00 
@@ -31,9 +31,9 @@ Software & Computer/Video Games,,0.15,1000000,0,1000000,0,0
 Sports,sports,0.15,1000000,0,1000000,0,$1.00 
 Sports Collectibles,,0.2,100,0.1,1000,0.06,0
 Tools & Home Improvement,,0.15,1000000,0,1000000,0,$1.00 
-Toys & Games,,0.15,1000000,0,1000000,0,$1.00 
+Toys & Games,toy,0.15,1000000,0,1000000,0,$1.00 
 Video & DVD,,0.15,1000000,0,1000000,0,0
 Video Games,video_games,0.15,1000000,0,1000000,0,0
 Video Game Consoles,,0.08,1000000,0,1000000,0,0
-Watches,,0.15,1000000,0,1000000,0,$2.00 
+Watches,watch,0.15,1000000,0,1000000,0,$2.00 
 Everything Else,,0.15,1000000,0,1000000,0,0
