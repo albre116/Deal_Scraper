@@ -214,6 +214,18 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                   cosASIN <- names(which.max(ASIN_store_cosine[2:nrow(ASIN_store_cosine),1]))
                   cosTitle <- amzsearchparsed$Title[which(amzsearchparsed$ASIN == cosASIN)]
                   
+                  #Identify most likely cosine match of all amazon search results that had matching model number
+                  cosASINmodel <- "NoModelMatch1"
+                  cosTitlemodel <- "NoModelMatch1"
+                  modelvectmatch  <- c(FALSE, (storematch$ModelMatch %in% 1)|(storematch$PartNumberMatch %in% 1))
+                  
+                  if(sum(modelvectmatch) > 0){
+                  
+                  cosASINmodel <- names(which.max(ASIN_store_cosine[,1][modelvectmatch]))
+                  cosTitlemodel <- amzsearchparsed$Title[which(amzsearchparsed$ASIN == cosASIN)]
+                  
+                  }
+                  
                   ##End Experimental##
                   
                   if(length(likelyASIN$ASIN) == 0){
@@ -288,6 +300,8 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                   #Experimental cosine results#
                   slickanalyzed$cosASIN[length(slickanalyzed$cosASIN) + 1] <- cosASIN
                   slickanalyzed$cosTitle[length(slickanalyzed$cosTitle) + 1] <- cosTitle
+                  slickanalyzed$cosASINmodel[length(slickanalyzed$cosASINmodel) + 1] <- cosASINmodel
+                  slickanalyzed$cosTitlemodel[length(slickanalyzed$cosTitlemodel) + 1] <- cosTitlemodel
                   
                   #Details of slickdeals source post
                   slickanalyzed$thumbs[length(slickanalyzed$thumbs) + 1] <- slickdetails$thumbs
@@ -842,6 +856,7 @@ amazon.searchparse <- function(URLXMLResp){
   Manufacturers <- as.character(c())
   Models <- as.character(c())
   PNs <- as.character(c())
+  Features <- as.character(c())
   
   XMLresult <- xmlParse(gsub("ns2:", "", gsub(":ns2", "2", gsub("xmlns", "redact", capture.output(URLXMLResp)))))
     
@@ -856,6 +871,7 @@ amazon.searchparse <- function(URLXMLResp){
       try(Manufacturers[i] <- c(html_text(XMLsub["//Manufacturer"])))
       try(Models[i] <- c(html_text(XMLsub["//Model"])))
       try(PNs[i] <- c(html_text(XMLsub["//PartNumber"])))
+      try(Features[i] <- paste(html_text(XMLsub["//Feature"]), collapse = " "))
       
       #If any fields are blank, return a zero length character string instead to preserve order
       try(if(is.na(Titles[i]) == TRUE){ Titles[i] <- ""})
@@ -863,12 +879,13 @@ amazon.searchparse <- function(URLXMLResp){
       try(if(is.na(Manufacturers[i]) == TRUE){ Manufacturers[i] <- ""})
       try(if(is.na(Models[i]) == TRUE){ Models[i] <- ""})
       try(if(is.na(PNs[i]) == TRUE){ PNs[i] <- ""})
+      try(if(is.na(Features[i]) == TRUE){ Features[i] <- ""})
       
     }
     
   }
   
-  output <- list("Title" = Titles, "ASIN" = ASINs, "Manufacturer" = Manufacturers, "Model" = Models, "PartNumber" = PNs)
+  output <- list("Title" = Titles, "ASIN" = ASINs, "Manufacturer" = Manufacturers, "Model" = Models, "PartNumber" = PNs, "Feature" = Features)
   
   return(output)
   
