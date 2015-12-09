@@ -13,8 +13,8 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
   #SellerId: Amazon Product MWS API credential
   #AWSSecretKey: Amazon Product MWS API credential
   
-  library(tm)
-  library(slam)
+#   library(tm)
+#   library(slam)
   library(httr)
   library(rvest)
   library(qdap)
@@ -37,12 +37,19 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
   
       #Get deal alert links from slickdeals
       slicklink <- slickmaillink(emailbody = slickmessage$body)
-      
+      #browser()
       if(length(slicklink) > 0){
         for(j in 1:length(slicklink)){
           
           ##UPGRADE to get details for each link in email that has price and ignore others and create loop or better yet FUNCTION
-          slickdetails <- slickget(slickURL = slicklink[j])
+          #slickdetails <- slickget(slickURL = slicklink[j])
+          
+          ##Temporary fix to convert new email link to old style compatible with slickget. Eventually should convert everything to run off of sitemap
+          slickURL <- slicklinkconv(slicklink[j])
+          #Random delay to look less like a robot to slickdeals
+          Sys.sleep(sample(c(1:10), 1))
+          
+          slickdetails <- slickget(slickURL = slickURL)
           
           #debug
           print("Done Getting Slickdeals Site")
@@ -187,46 +194,46 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                   
                   #TUNE THIS##If no exact matches found, remove requirement to match model number exactly and find the maximum weighted value match
                   
-                  ##Experimental## TEST COSINE SIMILARITY WITH TF-IDF weighting##
-                  
-                  #Combine manufacturer, model, partnumber, and title from Amazon results into a single line per ASIN
-                  amzcorpus <- amzsearchparsed
-                  amzcorpus$ASIN <- ""
-                  amzcorpus <- apply(X = amzsearchparsed, MARGIN = 1, FUN = paste, collapse = " ")
-                  names(amzcorpus) <- amzsearchparsed$ASIN
-                  
-                  #Get only text from rawscrape
-                  storetext <- htmlTreeParse(rawscrape, useInternal = TRUE)
-                  storetext <- unlist(xpathApply(storetext,"//p", xmlValue))
-                  storetext <- paste(storetext, collapse = " ")
-                  
-                  #create corpus with storetext as first row
-                  amzcorpus <- Corpus(VectorSource(c(storetext, amzcorpus)))
-                  amzTDM <- TermDocumentMatrix(amzcorpus,
-                                               control = list(stopwords = TRUE, removePunctuation = TRUE,
-                                                              minWordLength = 2, weighting = weightTfIdf))
-                  colnames(amzTDM) <- c("Store", amzsearchparsed$ASIN)
-                  
-                  #Calculate cosine similarity
-                  ASIN_store_cosine <- crossprod_simple_triplet_matrix(amzTDM)/(sqrt(col_sums(amzTDM^2) %*% t(col_sums(amzTDM^2))))
-                  
-                  #Select ASIN with the highest cosine similarity
-                  cosASIN <- names(which.max(ASIN_store_cosine[2:nrow(ASIN_store_cosine),1]))
-                  cosTitle <- amzsearchparsed$Title[which(amzsearchparsed$ASIN == cosASIN)]
-                  
-                  #Identify most likely cosine match of all amazon search results that had matching model number
-                  cosASINmodel <- "NoModelMatch1"
-                  cosTitlemodel <- "NoModelMatch1"
-                  modelvectmatch  <- c(FALSE, (storematch$ModelMatch %in% 1)|(storematch$PartNumberMatch %in% 1))
-                  
-                  if(sum(modelvectmatch) > 0){
-                  
-                  cosASINmodel <- names(which.max(ASIN_store_cosine[,1][modelvectmatch]))
-                  cosTitlemodel <- amzsearchparsed$Title[which(amzsearchparsed$ASIN == cosASIN)]
-                  
-                  }
-                  
-                  ##End Experimental##
+                  #                   ##Experimental## TEST COSINE SIMILARITY WITH TF-IDF weighting##
+                  #                   
+                  #                   #Combine manufacturer, model, partnumber, and title from Amazon results into a single line per ASIN
+                  #                   amzcorpus <- amzsearchparsed
+                  #                   amzcorpus$ASIN <- ""
+                  #                   amzcorpus <- apply(X = amzsearchparsed, MARGIN = 1, FUN = paste, collapse = " ")
+                  #                   names(amzcorpus) <- amzsearchparsed$ASIN
+                  #                   
+                  #                   #Get only text from rawscrape
+                  #                   storetext <- htmlTreeParse(rawscrape, useInternal = TRUE)
+                  #                   storetext <- unlist(xpathApply(storetext,"//p", xmlValue))
+                  #                   storetext <- paste(storetext, collapse = " ")
+                  #                   
+                  #                   #create corpus with storetext as first row
+                  #                   amzcorpus <- Corpus(VectorSource(c(storetext, amzcorpus)))
+                  #                   amzTDM <- TermDocumentMatrix(amzcorpus,
+                  #                                                control = list(stopwords = TRUE, removePunctuation = TRUE,
+                  #                                                               minWordLength = 2, weighting = weightTfIdf))
+                  #                   colnames(amzTDM) <- c("Store", amzsearchparsed$ASIN)
+                  #                   
+                  #                   #Calculate cosine similarity
+                  #                   ASIN_store_cosine <- crossprod_simple_triplet_matrix(amzTDM)/(sqrt(col_sums(amzTDM^2) %*% t(col_sums(amzTDM^2))))
+                  #                   
+                  #                   #Select ASIN with the highest cosine similarity
+                  #                   cosASIN <- names(which.max(ASIN_store_cosine[2:nrow(ASIN_store_cosine),1]))
+                  #                   cosTitle <- amzsearchparsed$Title[which(amzsearchparsed$ASIN == cosASIN)]
+                  #                   
+                  #                   #Identify most likely cosine match of all amazon search results that had matching model number
+                  #                   cosASINmodel <- "NoModelMatch1"
+                  #                   cosTitlemodel <- "NoModelMatch1"
+                  #                   modelvectmatch  <- c(FALSE, (storematch$ModelMatch %in% 1)|(storematch$PartNumberMatch %in% 1))
+                  #                   
+                  #                   if(sum(modelvectmatch) > 0){
+                  #                   
+                  #                   cosASINmodel <- names(which.max(ASIN_store_cosine[,1][modelvectmatch]))
+                  #                   cosTitlemodel <- amzsearchparsed$Title[which(amzsearchparsed$ASIN == cosASIN)]
+                  #                   
+                  #                   }
+                  #                   
+                  #                   ##End Experimental##
                   
                   if(length(likelyASIN$ASIN) == 0){
                     
@@ -297,11 +304,11 @@ newslick <- function(message.id, FBAFeeTable, ShipFeeTable, UPSrate, AWSAccessKe
                   slickanalyzed$AmzCommission[length(slickanalyzed$AmzCommission) + 1] <- fees$Commission
                   slickanalyzed$ShipInCost[length(slickanalyzed$ShipInCost) + 1] <- fees$Shipping
                   
-                  #Experimental cosine results#
-                  slickanalyzed$cosASIN[length(slickanalyzed$cosASIN) + 1] <- cosASIN
-                  slickanalyzed$cosTitle[length(slickanalyzed$cosTitle) + 1] <- cosTitle
-                  slickanalyzed$cosASINmodel[length(slickanalyzed$cosASINmodel) + 1] <- cosASINmodel
-                  slickanalyzed$cosTitlemodel[length(slickanalyzed$cosTitlemodel) + 1] <- cosTitlemodel
+                  #                   #Experimental cosine results#
+                  #                   slickanalyzed$cosASIN[length(slickanalyzed$cosASIN) + 1] <- cosASIN
+                  #                   slickanalyzed$cosTitle[length(slickanalyzed$cosTitle) + 1] <- cosTitle
+                  #                   slickanalyzed$cosASINmodel[length(slickanalyzed$cosASINmodel) + 1] <- cosASINmodel
+                  #                   slickanalyzed$cosTitlemodel[length(slickanalyzed$cosTitlemodel) + 1] <- cosTitlemodel
                   
                   #Details of slickdeals source post
                   slickanalyzed$thumbs[length(slickanalyzed$thumbs) + 1] <- slickdetails$thumbs
@@ -401,7 +408,7 @@ FBAcosts <- function(ASIN, FBAFeeTable, ShipFeeTable, UPSrate, amzpriceparsed, a
   if(amzpriceparsed$price > ShipFeeTable$ZeroFeeAt[sizeind]){shipfees <- shipweight*UPSrate + 0.30}
   
   #Calculate amazon commission fee for sale based on product category
-  comind <- grep(paste(amzpriceparsed$rankcat), as.character(FBAFeeTable$FBACatName), ignore.case = TRUE)
+  comind <- which(paste(amzpriceparsed$rankcat) == as.character(FBAFeeTable$FBACatName))
   if(length(comind) == 0){comind <- 38}
   
   salefeetiers <- rbind(c(0, FBAFeeTable$UpBound1[comind], FBAFeeTable$UpBound2[comind]),
@@ -628,7 +635,7 @@ slickget <- function(slickURL, dealframe = c()){
   dealtitle <- NA
   dealtext <- NA
   deallinks <- NA
-  
+  #browser()
   #Get html page
   slickhtml <- htmlParse(GET(slickURL))
   
@@ -1044,6 +1051,26 @@ amazon.MWSPost <- function(AWSAccessKeyId, Action, MarketplaceId, SellerId, AWSS
   #AmazonResult <- content(POST(AmazonURL))
   tryCatch(AmazonResult <- content(POST(AmazonURL, timeout(120))), error = function(e){AmazonResult <- NULL})
   return(AmazonResult)
+}
+
+##Temporary slickdeals link converter from new email style to old style compatible with slickget
+slicklinkconv <- function(emaillink){
+  
+  library(httr)
+  library(XML)
+  library(rvest)
+  
+convertedlink <- NA
+  #browser()
+  #Get html page
+  slickhtml <- htmlParse(GET(emaillink))
+  
+  newlink <- html_attr(html_node(slickhtml, "[rel = 'canonical']"), "href")
+  
+  convertedlink <- paste0(newlink, "?v=1")
+  
+  return(convertedlink)
+  
 }
 
 #Slickdeals website parser goes here - Optional if original gmail parse is not successful ##Not Started##
